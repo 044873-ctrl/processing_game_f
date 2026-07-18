@@ -1,1 +1,132 @@
-let cols=10;let rows=20;let cellSize=30;let board;let currentPiece;let dropCounter=0;let dropIntervalDefault=30;let dropInterval=dropIntervalDefault;let score=0;let gameOver=false;let colors=['#00f0f0','#ffff00','#a000f0','#f0a000','#0000f0','#00f000','#f00000'];let shapes=[[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],[[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],[[0,1,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],[[0,0,1,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],[[1,0,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],[[0,1,1,0],[1,1,0,0],[0,0,0,0],[0,0,0,0]],[[1,1,0,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]]];function makeEmptyBoard(){let b=[];for(let r=0;r<rows;r++){let row=[];for(let c=0;c<cols;c++){row.push(0);}b.push(row);}return b;}function copyMatrix(mat){let out=[];for(let r=0;r<4;r++){out.push(mat[r].slice());}return out;}function rotateMatrix(mat){let out=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];for(let r=0;r<4;r++){for(let c=0;c<4;c++){out[c][3-r]=mat[r][c];}}return out;}function collide(b,piece){for(let r=0;r<4;r++){for(let c=0;c<4;c++){let v=piece.matrix[r][c];if(v!==0){let x=piece.x+c;let y=piece.y+r;if(x<0||x>=cols||y>=rows){return true;}if(y>=0&&b[y][x]!==0){return true;}}}}return false;}function createPiece(){let idx=floor(random(shapes.length));let piece={x:floor(cols/2)-2,y:0,matrix:copyMatrix(shapes[idx]),type:idx};return piece;}function mergePiece(b,piece){for(let r=0;r<4;r++){for(let c=0;c<4;c++){let v=piece.matrix[r][c];if(v!==0){let x=piece.x+c;let y=piece.y+r;if(y>=0&&y<rows&&x>=0&&x<cols){b[y][x]=piece.type+1;}}}}}function clearLines(){let lines=0;for(let r=rows-1;r>=0;r--){let full=true;for(let c=0;c<cols;c++){if(board[r][c]===0){full=false;break;}}if(full){board.splice(r,1);let newRow=[];for(let c=0;c<cols;c++){newRow.push(0);}board.unshift(newRow);lines++;r++;}}if(lines>0){score+=lines*10;}}function resetPiece(){currentPiece=createPiece();if(collide(board,currentPiece)){gameOver=true;}}function playerMove(dir){currentPiece.x+=dir;if(collide(board,currentPiece)){currentPiece.x-=dir;}}function playerRotate(){let oldMatrix=copyMatrix(currentPiece.matrix);let rotated=rotateMatrix(oldMatrix);let kicked=false;for(let i=0;i<3;i++){let offset=(i===0?0:(i===1?1:-1));currentPiece.matrix=rotated;currentPiece.x+=offset;if(!collide(board,currentPiece)){kicked=true;break;}currentPiece.x-=offset;}if(!kicked){currentPiece.matrix=oldMatrix;}}function dropPiece(){currentPiece.y++;if(collide(board,currentPiece)){currentPiece.y--;mergePiece(board,currentPiece);clearLines();resetPiece();}dropCounter=0;}function setup(){createCanvas(cols*cellSize,rows*cellSize);frameRate(60);board=makeEmptyBoard();resetPiece();}function draw(){background(0);for(let r=0;r<rows;r++){for(let c=0;c<cols;c++){let v=board[r][c];if(v!==0){noStroke();fill(colors[v-1]);rect(c*cellSize,r*cellSize,cellSize-1,cellSize-1);}else{noFill();stroke(30);rect(c*cellSize,r*cellSize,cellSize,cellSize);}}}if(currentPiece&&(!gameOver)){for(let r=0;r<4;r++){for(let c=0;c<4;c++){if(currentPiece.matrix[r][c]!==0){let x=currentPiece.x+c;let y=currentPiece.y+r;if(y>=0){noStroke();fill(colors[currentPiece.type]);rect(x*cellSize,y*cellSize,cellSize-1,cellSize-1);}}}}if(keyIsDown(DOWN_ARROW)){dropInterval=floor(dropIntervalDefault/6);}else{dropInterval=dropIntervalDefault;}dropCounter++;if(dropCounter>=dropInterval){dropPiece();}}fill(255);noStroke();textSize(16);text('Score: '+score,5,20);if(gameOver){fill(200,0,0);textSize(32);text('Game Over',width/2-80,height/2);}}function keyPressed(){if(gameOver){return;}if(keyCode===LEFT_ARROW){playerMove(-1);}else if(keyCode===RIGHT_ARROW){playerMove(1);}else if(keyCode===UP_ARROW){playerRotate();}}
+let player = {x:240, y:0, w:40, h:20, speed:6};
+let bullets = [];
+let enemies = [];
+let score = 0;
+let lives = 3;
+let spawnInterval = 60;
+let lastSpawn = 0;
+let gameOver = false;
+let fireCooldown = 12;
+let lastFire = -100;
+function spawnEnemy(){
+  let ew = Math.floor(random(24,60));
+  let ex = Math.floor(random(0, width - ew));
+  let ev = random(1.5,3.0);
+  let enemy = {x: ex, y: -ew, w: ew, h: ew, vy: ev};
+  enemies.push(enemy);
+}
+function rectsOverlap(a,b){
+  return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+}
+function resetGame(){
+  bullets = [];
+  enemies = [];
+  score = 0;
+  lives = 3;
+  lastSpawn = frameCount;
+  lastFire = frameCount - fireCooldown;
+  gameOver = false;
+  player.x = width/2;
+  player.y = height - 40;
+}
+function setup(){
+  createCanvas(480,640);
+  player.x = width/2;
+  player.y = height - 40;
+  lastSpawn = frameCount;
+  lastFire = frameCount - fireCooldown;
+  textAlign(LEFT,TOP);
+  rectMode(CORNER);
+  noStroke();
+}
+function draw(){
+  background(18,18,28);
+  fill(255);
+  textSize(16);
+  text("Score: " + score, 10, 10);
+  text("Lives: " + lives, 10, 30);
+  if(gameOver){
+    textAlign(CENTER,CENTER);
+    textSize(32);
+    fill(255,100,100);
+    text("GAME OVER", width/2, height/2 - 20);
+    textSize(16);
+    fill(200);
+    text("Press R to restart", width/2, height/2 + 20);
+    textAlign(LEFT,TOP);
+    return;
+  }
+  if(keyIsDown(LEFT_ARROW) || keyIsDown(65)){
+    player.x -= player.speed;
+  }
+  if(keyIsDown(RIGHT_ARROW) || keyIsDown(68)){
+    player.x += player.speed;
+  }
+  player.x = constrain(player.x, 0, width - player.w);
+  if(keyIsDown(32) && frameCount - lastFire >= fireCooldown){
+    let bx = player.x + player.w/2 - 3;
+    let by = player.y - 6;
+    let b = {x: bx, y: by, w:6, h:12, vy: 8};
+    bullets.push(b);
+    lastFire = frameCount;
+  }
+  if(frameCount - lastSpawn >= spawnInterval){
+    spawnEnemy();
+    lastSpawn = frameCount;
+    if(spawnInterval > 20 && frameCount % 600 == 0){
+      spawnInterval = Math.max(20, spawnInterval - 5);
+    }
+  }
+  for(let i = bullets.length - 1; i >= 0; i--){
+    let b = bullets[i];
+    b.y -= b.vy;
+    fill(255,220,60);
+    rect(b.x, b.y, b.w, b.h);
+    if(b.y + b.h < 0){
+      bullets.splice(i,1);
+    }
+  }
+  for(let j = enemies.length - 1; j >= 0; j--){
+    let e = enemies[j];
+    e.y += e.vy;
+    fill(180,60,60);
+    rect(e.x, e.y, e.w, e.h);
+    if(e.y > height){
+      lives -= 1;
+      enemies.splice(j,1);
+      if(lives <= 0){
+        gameOver = true;
+      }
+      continue;
+    }
+    if(rectsOverlap(e, player)){
+      lives -= 1;
+      enemies.splice(j,1);
+      if(lives <= 0){
+        gameOver = true;
+      }
+      continue;
+    }
+    for(let i = bullets.length - 1; i >= 0; i--){
+      let b = bullets[i];
+      if(rectsOverlap(e,b)){
+        enemies.splice(j,1);
+        bullets.splice(i,1);
+        score += 10;
+        break;
+      }
+    }
+  }
+  fill(80,160,255);
+  rect(player.x, player.y, player.w, player.h);
+  if(score >= 100){
+    fill(255,240,100);
+    textSize(18);
+    text("You Win!", width - 120, 10);
+  }
+}
+function keyPressed(){
+  if(gameOver && (key == 'r' || key == 'R')){
+    resetGame();
+  }
+}
