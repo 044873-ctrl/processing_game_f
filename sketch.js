@@ -96,7 +96,7 @@ function drawBoard(){
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
       if(board[r][c]!==0){
-        if(board[r][c]===1){fill(0)
+        if(board[r][c]===1){fill(0,102,204)
         }else{fill(255)}
         noStroke()
         ellipse(c*cell+cell*0.5,r*cell+cell*0.5,cell*0.8,cell*0.8)
